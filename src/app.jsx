@@ -4,66 +4,123 @@ import ReactDOM from 'react-dom';
 import Chart from 'Chart';
 import 'app.scss';
 
-const points = [
-    { label: 2007, value: 51.3 },
-    { label: 2008, value: 56.5 },
-    { label: 2009, value: 56.7 },
-    { label: 2010, value: 57.3 },
-    { label: 2011, value: 57.9 },
-    { label: 2012, value: 58.5 },
-    { label: 2013, value: 58.1 },
-    { label: 2014, value: 60.4 },
-    { label: 2015, value: 61.0 },
-    { label: 2016, value: 61.5 },
-    { label: 2017, value: 61.4 },
-];
-
-const points2 = [
-    { label: 2007, value: 56.3 },
-    { label: 2008, value: 52.5 },
-    { label: 2009, value: 53.7 },
-    { label: 2010, value: 58.3 },
-    { label: 2011, value: 54.9 },
-    { label: 2012, value: 51.5 },
-    { label: 2013, value: 50.1 },
-    { label: 2014, value: 61.4 },
-    { label: 2015, value: 54.0 },
-    { label: 2016, value: 62.5 },
-    { label: 2017, value: 57.4 },
+const sets = [
+    {
+        title: 'Total US',
+        points: [
+            51.325199831720653,
+            56.499789650820361,
+            56.668051516410472,
+            57.250313414124527,
+            57.853457172342623,
+            58.532563891178896,
+            58.067831449126416,
+            60.369989722507711,
+            61.042439225381131,
+            61.527377521613836,
+            61.356141797197033,
+        ],
+        additionalPoints: [
+            62.359235993744669,
+            63.23946368477111,
+            64.00773999199258,
+            64.674010367795375,
+        ]
+    },
+    {
+        title: 'QSR',
+        points: [
+            37.893982808022926,
+            40.869565217391305,
+            41.159627773801,
+            42.733812949640289,
+            43.151171043293118,
+            44.026068066618393,
+            42.562592047128128,
+            44.793261868300156,
+            45.627376425855516,
+            45.454545454545453,
+            45.1219512195122,
+        ],
+    },
+    {
+        title: 'Fast Casual',
+        points: [
+            48.550724637681157,
+            50.625,
+            52.0,
+            51.075268817204304,
+            51.643192488262912,
+            51.754385964912281,
+            55.555555555555557,
+            56.307692307692307,
+            58.80503144654088,
+            59.451219512195124,
+            59.021406727828747,
+        ],
+    },
+    {
+        title: 'Midscale',
+        points: [
+            52.264492753623188,
+            57.870791628753409,
+            57.842248413417948,
+            58.725761772853183,
+            58.812074001947423,
+            59.125475285171106,
+            57.184185149469627,
+            59.922555663117137,
+            60.731948565776456,
+            60.663983903420522,
+            60.970677451971689,
+        ],
+    },
+    {
+        title: 'Casual Dining',
+        points: [
+            56.774916013437853,
+            63.355780022446687,
+            63.924402445803224,
+            64.403973509933778,
+            65.201072386058982,
+            65.517241379310349,
+            66.2379421221865,
+            68.4238838084992,
+            69.144385026737964,
+            69.643806485911753,
+            69.49602122015915,
+        ],
+    },
+    {
+        title: 'Fine Dining',
+        points: [
+            76.666666666666671,
+            82.882882882882882,
+            80.588235294117652,
+            78.730158730158735,
+            80.060422960725077,
+            82.388059701492537,
+            80.23952095808383,
+            81.286549707602333,
+            79.117647058823536,
+            83.880597014925371,
+            82.30088495575221,
+        ],
+    }
 ];
 
 class App extends Component {
     constructor(props) {
         super(props);
-        this.state = {
-            points: points,
-            prevPoints: points2
-        };
-        this.changeSet = this.changeSet.bind(this);
-    }
-
-    changeSet() {
-        if (!this.state.animate) {
-            this.setState({
-                points: this.state.points === points ? points2 : points,
-                prevPoints: this.state.points === points ? points : points2,
-                animate: true
-            });
-            setTimeout(() => {
-                this.setState({ animate: false })
-            }, 300);
-        }
     }
 
     render() {
         return (
             <div className="app">
                 <Chart
-                    {...this.state}
+                    data={sets}
+                    firstYearLabel={2007}
                 />
-                <button onClick={this.changeSet} style={{ position: 'fixed', bottom: '50px', left: '50px' }}>
-                    change
-                </button>
             </div>
         );
     }

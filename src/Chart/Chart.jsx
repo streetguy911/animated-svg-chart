@@ -4,15 +4,21 @@ class Chart extends Component {
     constructor(props) {
         super(props);
 
-        this.state = {
-            width: 0,
-            height: 0,
-        };
         this.offset = {
             top: 20,
             right: 20,
             left: 20,
             bottom: 20,
+        };
+
+        this.state = {
+            width: 0,
+            height: 0,
+            activeSetIndex: 0,
+            previousSetIndex: 0,
+            activeMarkerIndex: -1,
+            activeMarkerTop: 0,
+            activeMarkerLeft: 0
         };
 
         this.resize = this.resize.bind(this);
@@ -27,18 +33,21 @@ class Chart extends Component {
     componentWillUnmount() {
         window.removeEventListener('resize', this.handleWindowResize);
     }
-    componentWillReceiveProps(props) {
-        if (props.animate && !this.props.animate) {
+
+    componentWillUpdate({}, state) {
+        if (state.animate && !this.state.animate) {
             this.refs.animateLine.beginElement();
             this.refs.animateArea.beginElement();
         }
     }
 
     handleWindowResize() {
-        // clearTimeout(this.resizeTimer);
-        // this.resizeTimer = setTimeout(() => {
+        clearTimeout(this.resizeTimer);
+        this.resizeTimer = setTimeout(() => {
             this.resize();
-        // }, 1000);
+            this.refs.animateLine.beginElement();
+            this.refs.animateArea.beginElement();
+        }, 200);
     }
 
     resize() {
@@ -51,15 +60,29 @@ class Chart extends Component {
         }
     }
 
+    changeSet(setIndex) {
+        if (!this.state.animate) {
+            this.setState({
+                activeSetIndex: setIndex,
+                previousSetIndex: this.state.activeSetIndex,
+                animate: true
+            });
+
+            setTimeout(() => {
+                this.setState({ animate: false })
+            }, 300);
+        }
+    }
+
     getMinMax(points) {
         const { height } = this.state;
         const { top, bottom } = this.offset;
         let maxValue = -Infinity;
         let minValue = Infinity;
 
-        points.forEach((element) => {
-            maxValue = Math.max(maxValue, element.value);
-            minValue = Math.min(minValue, element.value);
+        points.forEach((value) => {
+            maxValue = Math.max(maxValue, value);
+            minValue = Math.min(minValue, value);
         });
         let min = minValue;
         let max = maxValue;
@@ -87,7 +110,7 @@ class Chart extends Component {
 
     getCoordinates(points) {
         const { max = 0, proportion = 1 } = this.getMinMax(points);
-        return points.map(({ value }) => proportion * (max - value));
+        return points.map(value => proportion * (max - value));
     }
 
     getPath(points) {
@@ -97,6 +120,7 @@ class Chart extends Component {
             const { left, right } = this.offset;
             const { width } = this.state;
             const step = (width - left - right) / 10;
+
             points.forEach((point, i) => {
                 if (i === 0) {
                     svgPoints.push('M');
@@ -118,11 +142,12 @@ class Chart extends Component {
 
     renderCurve() {
         const { left, right, bottom } = this.offset;
-        const { width, height } = this.state;
+        const { width, height, activeSetIndex, previousSetIndex } = this.state;
 
-        const { points, prevPoints } = this.props;
-        let pth = this.getPath(points);
-        let prevPth = this.getPath(prevPoints);
+        const { data } = this.props;
+        const { [activeSetIndex]: activeSet, [previousSetIndex]: previousSet } = data;
+        let pth = this.getPath(activeSet.points);
+        let prevPth = this.getPath(previousSet.points);
 
         return (
             <g>
@@ -166,26 +191,6 @@ class Chart extends Component {
         );
     }
 
-    renderGrid() {
-        const { width, height } = this.state;
-        const { left, right, top, bottom } = this.offset;
-        const fill = 'rgba(255, 255, 255, 0.4)';
-
-        return (
-            <g>
-                <circle fill={fill} cx={left} cy={top} r="5"/>
-                <circle fill={fill} cx={left} cy={height / 2} r="5"/>
-                <circle fill={fill} cx={left} cy={height - bottom} r="5"/>
-                <circle fill={fill} cx={width / 2} cy={top} r="5"/>
-                <circle fill={fill} cx={width / 2} cy={height / 2} r="5"/>
-                <circle fill={fill} cx={width / 2} cy={height - bottom} r="5"/>
-                <circle fill={fill} cx={width - right} cy={top} r="5"/>
-                <circle fill={fill} cx={width - right} cy={height / 2} r="5"/>
-                <circle fill={fill} cx={width - right} cy={height - bottom} r="5"/>
-            </g>
-        );
-    }
-
     renderCanvas() {
         const { width, height } = this.state;
 
@@ -202,40 +207,151 @@ class Chart extends Component {
         );
     }
 
+    setActiveMarker(index, left) {
+        console.log(left);
+        clearTimeout(this.resetMarkerTimer);
+        this.setState({
+            activeMarkerIndex: index,
+            activeMarkerLeft: left
+        });
+    }
+
+    resetActiveMarker() {
+        this.resetMarkerTimer = setTimeout(() => {
+            this.setState({
+                activeMarkerIndex: -1,
+                activeMarkerLeft: 0
+            });
+        }, 2000);
+    }
+
     renderMarkers() {
-        const coordinates = this.getCoordinates(this.props.points);
-        return this.props.points.map(({ label, value }, index) => (
+        const { activeSetIndex } = this.state;
+
+        const { data } = this.props;
+        const { [activeSetIndex]: activeSet } = data;
+        const coordinates = this.getCoordinates(activeSet.points);
+        return activeSet.points.map((value, index) => (
             <div
                 key={index}
-                className="snap-chart__marker snap-chart-marker"
+                className="the-chart__marker the-chart-marker"
+                onMouseEnter={({ target }) => {
+                    this.setActiveMarker(index, target.parentNode.offsetLeft)
+                }}
+                onMouseLeave={() => {
+                    this.resetActiveMarker()
+                }}
                 style={{
                     transform: `translateY(${coordinates[index]}px)`
                 }}
             >
-                <div className="snap-chart-marker__inner">
-                    {value.toFixed(1)} %
+                <div className="the-chart-marker__inner">
+                    {value.toFixed(1)}%
                 </div>
             </div>
         ));
     }
 
-    renderLabels() {
-        return this.props.points.map(({ label }, index) => (
-            <div key={index} className="snap-chart__label" onMouseEnter={() => console.log(index)}>
-                {label}
+    renderTooltipTriangle() {
+        const { data } = this.props;
+        const { activeSetIndex, activeMarkerIndex, activeMarkerLeft, width } = this.state;
+        const coordinates = this.getCoordinates(data[activeSetIndex].points);
+
+        const x = activeMarkerLeft;
+        const y = coordinates[activeMarkerIndex];
+
+        if (activeMarkerIndex === -1) return null;
+
+        return (
+            <div
+                style={{
+                    transform: `translate(${x}px, ${y}px) rotate(45deg)`
+                }}
+                className="the-chart-tooltip__triangle"
+            />
+        );
+
+    }
+
+    renderTooltip() {
+        const { data } = this.props;
+        const { activeSetIndex, activeMarkerIndex, activeMarkerLeft, width } = this.state;
+        const coordinates = this.getCoordinates(data[activeSetIndex].points);
+        const tooltipValues = data.map(({ points }) => points[activeMarkerIndex]);
+        const x = Math.max(-20, Math.min(activeMarkerLeft - 75, width - 170));
+        const y = coordinates[activeMarkerIndex];
+
+        if (activeMarkerIndex === -1) return null;
+
+        return (
+            <div
+                style={{
+                    transform: `translate(${x}px, ${y}px)`
+                }}
+                className="the-chart__tooltip the-chart-tooltip"
+                onMouseEnter={() => { clearTimeout(this.resetMarkerTimer); }}
+                onMouseLeave={() => { this.resetActiveMarker(); }}
+            >
+                {tooltipValues.map((value, index) => (
+                    <div
+                        key={index}
+                        className={`
+                            thi-chart-tooltip__row
+                            ${index === activeSetIndex ? 'the-chart-tooltip__row--active' : ''}
+                        `}
+                    >
+                        {data[index].title}
+                        <div className="the-chart-tooltip__value">
+                            {value.toFixed(1)}%
+                        </div>
+                    </div>
+                ))}
             </div>
+        );
+    }
+
+    renderLabels() {
+        const { firstYearLabel, data } = this.props;
+        const { points } = data[this.state.activeSetIndex];
+        return points.map(({}, index) => (
+            <div key={index} className="the-chart__label">
+                {firstYearLabel + index}
+            </div>
+        ));
+    }
+
+    renderTabs() {
+        const { data } = this.props;
+        return this.props.data.map(({ title }, index) => (
+            <button
+                key={index}
+                onClick={this.changeSet.bind(this, index)}
+                className={`
+                    the-chart__tab
+                    ${index === this.state.activeSetIndex ? 'the-chart__tab--active' : ''}
+                `}
+            >
+                {title} {data[index].points[data[index].points.length - 1].toFixed(1)}%
+            </button>
         ));
     }
 
     render() {
         return (
-            <div className="snap-chart" ref="container">
-                {this.renderCanvas()}
-                <div className="snap-chart__markers">
-                    {this.renderMarkers()}
+            <div>
+                <div className="the-chart__inner" ref="container">
+                    {this.renderCanvas()}
+                    <div className="the-chart__markers">
+                        {this.renderMarkers()}
+                        {this.renderTooltip()}
+                        {this.renderTooltipTriangle()}
+                    </div>
+                    <div className="the-chart__labels">
+                        {this.renderLabels()}
+                    </div>
                 </div>
-                <div className="snap-chart__labels">
-                    {this.renderLabels()}
+                <div className="the-chart__tabs">
+                    {this.renderTabs()}
                 </div>
             </div>
         );
