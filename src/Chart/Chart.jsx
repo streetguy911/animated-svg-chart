@@ -10,7 +10,7 @@ class Chart extends Component {
             left: 20,
             bottom: 20,
         };
-
+        this.tooltipWidth = 130;
         this.state = {
             width: 0,
             height: 0,
@@ -18,11 +18,21 @@ class Chart extends Component {
             previousSetIndex: 0,
             activeMarkerIndex: -1,
             activeMarkerTop: 0,
-            activeMarkerLeft: 0
+            activeMarkerLeft: 0,
         };
 
         this.resize = this.resize.bind(this);
         this.handleWindowResize = this.handleWindowResize.bind(this);
+    }
+
+    playAnimation() {
+        const { animateLine, animateArea } = this.refs;
+        if (animateLine.beginElement) {
+            animateLine.beginElement();
+        }
+        if (animateArea.beginElement) {
+            animateArea.beginElement();
+        }
     }
 
     componentDidMount() {
@@ -41,15 +51,6 @@ class Chart extends Component {
         }
     }
 
-    handleWindowResize() {
-        clearTimeout(this.resizeTimer);
-        this.resizeTimer = setTimeout(() => {
-            this.resize();
-            this.refs.animateLine.beginElement();
-            this.refs.animateArea.beginElement();
-        }, 200);
-    }
-
     resize() {
         if (this.refs.container) {
             const { offsetHeight, offsetWidth } = this.refs.container;
@@ -58,6 +59,14 @@ class Chart extends Component {
                 height: offsetHeight
             });
         }
+    }
+
+    handleWindowResize() {
+        clearTimeout(this.resizeTimer);
+        this.resizeTimer = setTimeout(() => {
+            this.resize();
+            this.playAnimation();
+        }, 200);
     }
 
     changeSet(setIndex) {
@@ -275,10 +284,16 @@ class Chart extends Component {
 
     renderTooltip() {
         const { data } = this.props;
+        const { left, right } = this.offset;
         const { activeSetIndex, activeMarkerIndex, activeMarkerLeft, width } = this.state;
         const coordinates = this.getCoordinates(data[activeSetIndex].points);
         const tooltipValues = data.map(({ points }) => points[activeMarkerIndex]);
-        const x = Math.max(-20, Math.min(activeMarkerLeft - 75, width - 170));
+        const x = Math.max(
+            -20,
+            Math.min(
+                activeMarkerLeft - this.tooltipWidth/2,
+                width - left - right - this.tooltipWidth)
+        );
         const y = coordinates[activeMarkerIndex];
 
         if (activeMarkerIndex === -1) return null;
